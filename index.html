@@ -1,0 +1,280 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script language="javascript" type="text/javascript" src="libraries/p5.js"></script>
+  <script language="javascript" src="libraries/p5.dom.js"></script>
+
+
+  <style> body {
+  margin: 0;
+  display: flex;
+
+  /* This centers the canvas horizontally. */
+  justify-content: center;
+
+  /* This centers the canvas vertically. */
+  align-items: center;
+  }
+  </style>
+
+</head>
+  <script type = "text/javascript">
+ const inverse = -1;
+ const brick_W = 90;
+ const brick_H = 40;
+ const num_bricks = 21;
+ const num_rows = 3;
+ const num_cols = 7;
+ const paddle_W = 160;
+ const paddle_H = 10;
+ const padding = 3;
+ var bricks = [];
+ var bricksLeft = num_bricks;
+ var over = false;
+
+ for(let i = 0; i < num_bricks; i++)
+	{
+		bricks[i] = [];
+	}
+
+
+function brick(x, y, row, col, red, green, blue)
+{
+    this.x = x;
+    this.y = y;
+    this.row = row;
+    this.col = col;
+	  this.red = red;
+	  this.green = green;
+	  this.blue = blue;
+
+    this.collision = function(){
+      bricks[this.row][this.col] = null;
+      bricksLeft--;
+      if(bricksLeft == 0){
+        gameover();
+      }
+    }
+}
+
+
+function paddle(x, y)
+{
+		this.x = x;
+		this.y = y;
+		this.red = 0;
+		this.green = 0;
+		this.blue = 0;
+
+  this.show = function(){
+    //print(mouseX);
+    var paddleX = mouseX;
+  	if(mouseX > width - paddle_W / 2)
+  		paddleX = width - paddle_W / 2;
+    else if(mouseX < paddle_W / 2)
+      paddleX = paddle_W / 2;
+
+    fill(color(paddle.red, paddle.green, paddle.blue));
+    rect(paddleX-paddle_W / 2, paddle.y, paddle_W, paddle_H);
+    paddle.x = paddleX;
+  }
+}
+
+function ball(x, y, diameter)
+{
+    this.x = x;
+		this.y = y;
+    this.diameter = diameter;
+    this.speedX = -5;
+    this.speedY = 5;
+		this.red = 0;
+		this.green = 0;
+		this.blue = 0;
+
+    this.show = function(){
+      fill(color(ball.red, ball.green, ball.blue));
+      ellipse(ball.x, ball.y, diameter,diameter);
+    }
+
+    this.move = function(){
+        //wall deflection
+        //Left
+        if(ball.x <= 0){
+          ball.speedX *= inverse;
+          ball.x = 0;
+        }
+
+        //Right
+        if(ball.x >= width){
+          ball.speedX *= inverse;
+          ball.x = width;
+        }
+
+        //Top
+        if(ball.y <= 0){
+          ball.speedY *= inverse;
+          ball.y = 0;
+        }
+
+        //Bottom
+        if(ball.y >= height){
+            gameover();
+        }
+
+        //paddle deflection
+        if(ball.x >= paddle.x - paddle_W/2 && ball.x <= paddle.x + paddle_W/2 &&
+           ball.y >= paddle.y && ball.y <= paddle.y + paddle_H){
+             if(firstHit == false){
+               firstHit = true;
+               variation = Math.floor(Math.random() * 2);
+               if(variation == 1){
+                 ball.speedX *= inverse;
+               }
+             }
+             else{
+               ball.speedY *= inverse;
+               ball.y = paddle.y;
+             }
+        }
+
+        //check brick collision
+        for(let i = 0; i < num_cols; i++)
+      	{
+      	  for(let j = 0; j < num_rows; j++)
+      		{
+            if(bricks[i][j] != null){
+              //corner case
+              if((ball.x >= bricks[i][j].x && ball.x <= bricks[i][j].x + padding && ball.y >= bricks[i][j].y && ball.y <= bricks[i][j].y + padding) || //TL
+                 (ball.x >= bricks[i][j].x + brick_W - padding && ball.x <= bricks[i][j].x + brick_W && ball.y >= bricks[i][j].y && ball.y <= bricks[i][j].y + padding) || //TR
+                  (ball.x >= bricks[i][j].x && ball.x <= bricks[i][j].x + padding && ball.y >= bricks[i][j].y + brick_H - padding && ball.y <= bricks[i][j].y + brick_H) || //BL
+                   (ball.x >= bricks[i][j].x + brick_W - padding && ball.x <= bricks[i][j].x + brick_W && ball.y >= bricks[i][j].y + brick_H - padding && ball.y <= bricks[i][j].y + brick_H)){ //BR
+                     print("brick corner");
+                     ball.speedX *= inverse;
+                     ball.speedY *= inverse;
+                     bricks[i][j].collision();
+                   }
+
+              //left or right
+              else if((ball.x >= bricks[i][j].x && ball.x <= bricks[i][j].x + padding && ball.y >= bricks[i][j].y && ball.y <= bricks[i][j].y + brick_H) || //L
+                  (ball.x >= bricks[i][j].x + brick_W - padding && ball.x <= bricks[i][j].x + brick_W && ball.y >= bricks[i][j].y && ball.y <= bricks[i][j].y + brick_H)){ //R
+                   print("L/R brick side");
+                ball.speedX *= inverse;
+                bricks[i][j].collision();
+              }
+
+              //top or bottom of brick
+              else if((ball.y >= bricks[i][j].y && ball.y <= bricks[i][j].y + padding && ball.x >= bricks[i][j].x && ball.x <= bricks[i][j].x + brick_W) || //T
+                       ball.y >= bricks[i][j].y + brick_H - padding && ball.y <= bricks[i][j].y + brick_H && ball.x >= bricks[i][j].x && ball.x <= bricks[i][j].x + brick_W){ //B
+                  print("T/B brick side");
+                  ball.speedY *= inverse;
+                  bricks[i][j].collision();
+              }
+            }
+          }
+        }
+
+        //move ball
+        this.x += this.speedX;
+        this.y += this.speedY;
+    }
+
+    this.collision = function(){
+    }
+}
+
+function gameover(){
+    over = true;
+    start = false;
+    return true;
+}
+
+
+function setup()
+{
+  createCanvas(1000, 600);
+  frameRate(60);
+
+	for(let i = 0; i < num_cols; i++)
+	{
+	  for(let j = 0; j < num_rows; j++)
+		{
+			r = random(255);
+			g = random(255);
+			b = random(255);
+			bricks[i][j] = new brick(135 * i + 60, 80 * j + 50, i, j, r, g, b);
+		}
+	}
+
+	paddle = new paddle(width / 2.25, height - 10);
+
+  var ballX = mouseX - paddle_W / 2;
+  ball = new ball(ballX, height - 250, 10);
+
+  firstHit = false;
+}
+
+
+start = false;
+function draw()
+{
+  background(244, 248, 252);
+  if(firstHit == false)
+  {
+    ballX = mouseX;
+  	if(mouseX > width - paddle_W / 2)
+  		ballX = width - paddle_W / 2;
+    else if(mouseX < paddle_W / 2)
+      ballX = paddle_W / 2;
+    ball.x = ballX;
+  }
+
+  paddle.show();
+  ball.show();
+
+  if(mouseIsPressed){
+    if(over == false){
+      start = true;
+    }
+  }
+
+  for(let i = 0; i < num_cols; i++)
+  {
+	  for(let j = 0; j < num_rows; j++)
+	  {
+      if(bricks[i][j] != null)
+      {
+        fill(color(bricks[i][j].red, bricks[i][j].green, bricks[i][j].blue));
+		    rect(bricks[i][j].x, bricks[i][j].y, brick_W, brick_H);
+      }
+	  }
+  }
+
+  if(start == true)
+  {
+    ball.move();
+  }
+  else if(over == false){
+      textSize(72);
+      fill(0, 0, 0);
+      title = text('Brick Breaker', width - 680, height - 280);
+      textSize(24);
+      instruction = text('click to start', width - 550, height - 200);
+  }
+  else if(over == true){
+    textSize(72);
+    fill(0, 0, 0);
+    if(bricksLeft == 0){
+      win = text('You Win', width - 625, height - 280);
+    }
+    else{
+    lose = text('You Lose', width - 625, height - 280);
+    }
+  }
+}
+
+
+</script>
+<body>
+
+</body>
+</html>
